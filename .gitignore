@@ -1,23 +1,23 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
+*.Rproj.user
+*.Rhistory
+*.RData
+*.Ruserdata
 
-.xls
+*.xls
 *.xlsx
-.csv
-.sav
+*.csv
+*.sav
 
-.pdf
-.doc
-.docx
-.txt
+*.pdf
+*.doc
+*.docx
+*.txt
 
-.jpg
-.jpeg
-.png
+*.jpg
+*.jpeg
+*.png
 
-.ppt
-.pptx
+*.ppt
+*.pptx
 
-.h5
+*.h5
