@@ -15,7 +15,8 @@ track <- sqlQuery(Rdb, "select * from public.track where timestamp_start between
                         and classification_id=5
                         order by timestamp_start")
 
-track <-  sqlQuery(Rdb, "select * from public.track limit 100 offset 1250000")
+track <-  sqlQuery(Rdb, "select * from public.track limit 100")
+trackestimate <- sqlQuery(Rdb, "select * from public.trackestimate limit 100")
 metainfo <- sqlQuery(Rdb, "select * from public.tracking_metainfo")
 weather <-  sqlQuery(Rdb, "select * from public.weather limit 100 offset 5")
 class <- sqlQuery(Rdb, "select * from public.classification limit 100 offset 5")
