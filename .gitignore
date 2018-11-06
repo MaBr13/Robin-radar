@@ -22,4 +22,5 @@
 
 *.h5
 *.twbx
-.Rproj.user
+*.Rproj.user
+*.RDataTmp
