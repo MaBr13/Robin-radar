@@ -220,30 +220,32 @@ ggplot(track,aes(x=date, group=bird, fill=bird))+
 #########################################################
 #######################ALTITUDE##########################
 
-vertical <- sqlQuery(Rdb, "select id,timestamp,airspeed,radar_id,position, ST_X(position), ST_Y(position), ST_Z(position), 
-                  extract(year from timestamp) as year,extract (month from timestamp) as month, 
-                  extract (day from timestamp) as day,extract (hour from timestamp) as hour  from public.trackestimate
-                  where airspeed<27
-                  and timestamp between date '2018-09-22' and date'2018-10-23'
-                  and extract(hour from timestamp) in (19,20,21,22,23,0,1,2,3,4,5,6,7)
-                  and radar_id=1
-                  order by timestamp")
+vertical <- sqlQuery(Rdb, "select id,timestamp_end as timestamp,classification_id,
+                     ST_Z(ST_EndPoint(trajectory)) as alt
+                     from public.track
+                      WHERE exists (
+                     SELECT * FROM unnest(assignable_properties) n
+                     WHERE n in('STRAIGHT')) 
+                     AND airspeed between '8' and '15'
+                     and timestamp_start between '2018-10-19 17:00:00' and '2018-10-20 08:00:00'
+                     and tracktype in('RaEl','RaAzEl')
+                     order by timestamp_end")
 
+###altitude is being stored above ellipsoid, therefore we need to add 43.3705 m to get the altitude amsl
+vertical$real.alt <- vertical$alt + 43.3705
+breaks <- seq(0,2000,100)
 
-vertical <- sqlQuery(Rdb, "select id,timestamp,airspeed,radar_id,position, ST_X(position), ST_Y(position), ST_Z(position), 
-                  extract(year from timestamp) as year,extract (month from timestamp) as month, 
-                     extract (day from timestamp) as day,extract (hour from timestamp) as hour  from public.trackestimate
-                     where airspeed<27
-                     and timestamp between date '2018-10-19' and date'2018-10-19'
-                     and extract(hour from timestamp) in (19,20,21,22,23,0,1,2,3,4,5,6,7)
-                     and radar_id=1
-                     order by timestamp")
-
-                     
-                     #where timestamp between date '2018-09-21' and date'2018-09-27'
-                 # and extract(hour from timestamp_start) in (19,20,21,22,23,0,1,2,3,4,5,6,7)
-                  #and airspeed<27 
-                  #order by timestamp_start")
-
+require(ggplot2)
+ggplot(vertical, aes(real.alt)) +
+  geom_histogram(fill="goldenrod3", colour="black",
+                 breaks=breaks) +
+  ggtitle("Flight altitudes 19-20 Oct 2018") +
+  coord_flip()+
+  theme(axis.title.y = element_text(size=18), legend.text=element_text(size=14), 
+        legend.title=element_text(size=16, face="bold"), legend.position = "bottom",
+        axis.text.y=element_text(size=14), axis.text.x=element_text(size=12), plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"),
+        axis.title.x = element_text(size=18), plot.title = element_text(size = 18, face = "bold"))+
+  xlab("Altitudes") + ylab("Number of tracks") +
+  scale_x_continuous("",limits=c(0,2000), breaks = c(breaks))
 
 
