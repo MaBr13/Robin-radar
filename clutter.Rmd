@@ -1,0 +1,141 @@
+---
+title: "Clutter"
+author: "M. Bradaric"
+date: "1/21/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+```{r setup, results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+
+library(sf)
+library(DBI)
+library(RPostgreSQL)
+library(beepr)
+library(lubridate)
+library(dplyr)
+library(imputeTS)
+library(ggplot2)
+library(plotly)
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2019vert.csv",sep=";")
+vert <- subset(vert,altitude>=0)
+vert <- subset(vert,distance>=500 & distance<=1500 | distance<=-500 & distance>=-1500)
+vert$timestamp_start <- as.POSIXct(vert$timestamp_start, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+vert$timestamp <- as.POSIXct(ymd_hm(paste(date(vert$timestamp_start), vert$hourx,minute(vert$timestamp_start), sep= ' ')))
+vert$timestamph<- as.character(ymd_h(paste(date(vert$timestamp_start), hour(vert$timestamp_start),sep= ' ')))
+vert$timestamph <- as.POSIXct(vert$timestamph,format="%Y-%m-%d %H:%M:%S")
+
+clutter <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_spring2019_L.csv",sep=";")
+colnames(clutter)[which(names(clutter) == "timestamp1")] <- "timestamp"
+clutter$timestamp <- as.POSIXct(clutter$timestamp,tz="UTC")
+clutter$timestamph <- as.POSIXct(ymd_h(paste(as.Date(clutter$timestamp), hour(clutter$timestamp),sep= ' ')))
+#depending on the year the raadar_id can be 2,3,5,6,9 and 11
+#first check the radar id in the data
+unique(clutter$radar_id)
+clutterH <- subset(clutter,radar_id==5 | radar_id==6 | radar_id==11)
+
+clutH <- clutterH %>%
+  group_by(timestamph)%>%
+  summarise(l_mask=mean(l_mask),v_mask=mean(v_mask),r_mask=mean(r_mask))
+
+altdif <- subset(vert,altitude_layer>=0 & altitude_layer<500 | 
+                   altitude_layer>=500 & altitude_layer<1000 | 
+                   altitude_layer>=1000 & altitude_layer<1500)
+altdif$height <- with(altdif,ifelse(altdif$altitude_layer>=0 & altdif$altitude_layer<=200,"low",
+                                    ifelse(altdif$altitude_layer>=500 & altdif$altitude_layer<=700,"medium","high")))
+altdif$height = factor(altdif$height, levels=c("high","medium","low"), labels=c("high","medium","low"))
+```
+
+```{r}
+y0 <- max(clutH$l_mask)*100
+
+
+fig <- plot_ly(vert)
+fig <- fig %>% add_trace(x = ~timestamph,type="histogram",name = ~vert$classification,         color=~vert$classification, colors = c("magenta","red","orange","yellow"),yaxis = 'y1') %>% 
+    layout(barmode = "stack")
+fig <- fig %>% add_lines(data=clutH, name="land", x = ~timestamph, y = ~l_mask*100,
+                        line = list(color="green",width=0.5),yaxis = 'y2',showlegend=TRUE)
+fig <- fig %>% add_lines(data=clutH, name="variable", x = ~timestamph, y = ~v_mask*100,
+                         line = list(color="brown",width=0.5),yaxis = 'y2',showlegend=TRUE)
+fig <- fig %>% add_lines(data=clutH, name="rain", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="blue",width=0.5),yaxis = 'y2',showlegend=TRUE)
+fig <- fig %>% layout(
+                     xaxis = list(title = ""),
+                     yaxis = list(side = 'left', title = 'Count', showgrid = FALSE, zeroline = FALSE),
+                     yaxis2 = list(showline = FALSE, side = "right", overlaying = "y", position = 1,
+                        title = "", anchor = "free",title="Clutter",
+                        dtick = 25,range = c(0,100), fixedrange=TRUE),
+                     legend = list(orientation = 'h'),
+                     margin = list(l = 50, r = 50, b = 50, t = 50, pad = 4))
+fig
+```
+
+```{r}
+
+y0 <- max(clutH$l_mask)*100
+
+altdif %>% 
+  split(altdif$height) %>% 
+  lapply(function(x) {
+    plot_ly(data = altdif) %>% 
+    add_trace(x = ~timestamph,type="histogram",name = ~altdif$classification,               color=~altdif$classification, colors = c("magenta","red","orange","yellow"),yaxis = 'y1') %>% 
+    layout(barmode = "stack") %>%
+    add_lines(data=clutH, name="land", x = ~timestamph, y = ~l_mask,
+                        line = list(color="green",width=0.5),yaxis = 'y2',showlegend=FALSE) %>%
+    layout(xaxis = list(title = ""),
+                     yaxis = list(side = 'left', title = 'Count', showgrid = FALSE, zeroline = FALSE),
+                     yaxis2 = list(showline = FALSE, side = "right", overlaying = "y", position = 1,
+                        title = "", anchor = "free",title="Clutter",
+                        dtick = 0.25,range = c(min(clutH$l_mask),
+                        max(clutH$l_mask)), fixedrange=TRUE),
+                     legend = list(orientation = 'h'),
+                     margin = list(l = 50, r = 50, b = 50, t = 50, pad = 4)) 
+      
+                     
+     
+  }) %>% 
+  subplot(margin = .05,nrows=3,shareX=T)
+
+```
+

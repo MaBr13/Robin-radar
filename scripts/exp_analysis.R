@@ -17,8 +17,7 @@ trackestimate <- sqlQuery(Rdb, "select * from public.trackestimate where timesta
 
 track <- sqlQuery(Rdb, "select id,timestamp_start,classification_id,phi_diff,airspeed, extract(year from timestamp_start) as year,extract (month from timestamp_start) as month, 
 extract (day from timestamp_start) as day,extract (hour from timestamp_start) as hour  from public.track 
-                        where timestamp_start between '2019-03-30 20:00:00' and '2019-03-31 05:00:00'
-                        and tracktype in ('RaAz','RaAzEl')
+                        where timestamp_start between '2020-10-14 18:00:00' and '2020-10-15 05:00:00'
                         and classification_id>4
                         order by timestamp_start")
 track$dir_rad <- circular(track$phi_diff, type = "angles", units = "radians", zero = 0, rotation = "clock")
@@ -276,3 +275,8 @@ ggplot(vertical, aes(alt)) +
   xlab("Altitudes") + ylab("Number of tracks")+ ylim(0,30000) +
   scale_x_continuous("",limits=c(0,300), breaks = breaks)
 
+
+track$timestamp_start <- as.POSIXct(track$timestamp_start)
+class(oneday$timestamp_start)
+track$tc <- cut(track$timestamp_start, breaks = "15 min")
+track$tc <- as.POSIXct(track$tc)

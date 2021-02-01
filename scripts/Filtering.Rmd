@@ -1,0 +1,156 @@
+---
+title: "Filtering"
+author: "M. Bradaric"
+date: "2/1/2021"
+output: html_document
+---
+
+---
+title: "Clutter, rain and waves"
+author: "M. Bradaric"
+date: "1/26/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+---
+
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(imputeTS)
+
+sea <- read.csv("C:/Users/mbradar/Documents/Sea_waves/sea_2019-2020_L_2.csv",sep=";")
+sea <- sea[,c(2,20:21,23)]
+colnames(sea)[colnames(sea)==c("MEETPUNT_IDENTIFICATIE","WAARNEMINGDATUM","WAARNEMINGTIJD",'NUMERIEKEWAARDE')] <- c("station","date","time","height")
+sea <- subset(sea,station=='IJgeul 1 boei')
+sea$timestamp <- paste(sea$date, sea$time, sep= ' ')
+sea$timestamp <- as.POSIXct(sea$timestamp,format="%d-%m-%Y %H:%M:%S")
+sea$timestamph <- ymd_h(paste(date(sea$timestamp), hour(sea$timestamp),sep= ' '))
+sea <- subset(sea,height<10000)
+
+seaH <- sea %>%
+  group_by(timestamph) %>%
+  summarise(height=mean(height))
+```
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+mix1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2019vert.csv",sep=";")
+mix1 <- mix1[,-(7)]
+mix2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019mixedandvert.csv",sep=";")
+mix3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2020vert.csv",sep=";")
+mix3 <- mix3[,-(7)]
+mix4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Autumn_2020_mixed&vert.csv",sep=";")
+mix4 <- mix4[,-(7)]
+
+listm <- list(mix1,mix2,mix3,mix4)
+```
+
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+mix <- do.call("rbind",listm)
+
+vert <- subset(mix,tracktype=='RaEl')
+vert <- subset(vert,altitude>=0)
+vert <- subset(vert,distance>=500 & distance<=1500 | distance<=-500 & distance>=-1500)
+vert$timestamp_start <- as.POSIXct(vert$timestamp_start, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+vert$timestamp <- as.POSIXct(ymd_hm(paste(date(vert$timestamp_start), vert$hourx,minute(vert$timestamp_start), sep= ' ')))
+vert$timestamph<- as.character(ymd_h(paste(date(vert$timestamp_start), hour(vert$timestamp_start),sep= ' ')))
+vert$timestamph <- as.POSIXct(vert$timestamph,format="%Y-%m-%d %H:%M:%S")
+vertH <- vert %>%
+  group_by(timestamph) %>%
+  summarise(count=length(track_id))
+  
+```
+
+
+```{r, results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+clutter1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_spring2019_L.csv",sep=";")
+clutter2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_autumn2019_L.csv",sep=";")
+clutter3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_spring2020_L.csv",sep=";")
+clutter4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_autumn2020_L.csv",sep=";")
+listc <- list(clutter1,clutter2,clutter3,clutter4)
+clutter <- do.call("rbind",listc)
+
+colnames(clutter)[which(names(clutter) == "timestamp1")] <- "timestamp"
+clutter$timestamp <- as.POSIXct(clutter$timestamp,tz="UTC")
+clutter$timestamph <- as.POSIXct(ymd_h(paste(as.Date(clutter$timestamp), hour(clutter$timestamp),sep= ' ')))
+#depending on the year the horizontal radar_id can be 2,3,5,6,9 and 11
+#first check the radar id in the data
+unique(clutter$radar_id)
+clutterH <- subset(clutter,radar_id==2 | radar_id==3 | radar_id==5 | radar_id==6 | radar_id==9 | radar_id==11)
+clutterV <- subset(clutter,radar_id==1 | radar_id==4 | radar_id==7 | radar_id==8 | radar_id==10 | radar_id==12)
+
+clutH <- clutterH %>%
+  group_by(timestamph)%>%
+  summarise(l_mask=mean(l_mask),v_mask=mean(v_mask),r_mask=mean(r_mask))
+
+clutV <- clutterV %>%
+  group_by(timestamph)%>%
+  summarise(l_mask=mean(l_mask),v_mask=mean(v_mask),r_mask=mean(r_mask))
+```
+
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
+rain1 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_spring2019.csv", sep=";")
+rain2<- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2019.csv", sep=";")
+rain3 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_spring2020.csv", sep=";")
+rain4 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2020.csv", sep=";")
+
+listr <- list(rain1,rain2,rain3,rain4)
+rain <- do.call("rbind",listr)
+
+colnames(rain)[colnames(rain)==c("timestampx")] <- c("timestamp")
+rain$timestamp <- as.POSIXct(rain$timestamp, tz="UTC")
+rain$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain$timestamp), hour(rain$timestamp),sep= ' '))) 
+rain <- subset(rain,mean<500)
+
+rainH <- rain %>%
+  group_by(timestamph) %>%
+  summarise(mean=mean(mean))
+```
+
+```{r,results='hide', message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+rm(list = c("clutter1","clutter2","clutter3","clutter4","mix1","mix2","mix3","mix4",
+            "rain1","rain2","rain3","rain4","listc","listm","listr","mix"))
+```
+
