@@ -31,6 +31,12 @@ clut <- st_read(con, query ="SELECT date_trunc('minute', timestamp)::character v
 beep()
 write.table(clut,"C:/Users/mbradar/Documents/Robin/data/clutter_autumn2020_L.csv",sep=";")
 
+activity <- st_read(con,query="SELECT date_trunc('minute', timestamp)::character varying as timestamp1,radar_id,
+                             id from public.image
+                             WHERE timestamp between '2020-02-15 00:00:00' and '2020-06-01 00:00:00'")
+beep()
+
+write.table(activity,"C:/Users/mbradar/Documents/Robin/data/activity_spring2020_L.csv",sep=";")
 #SPRING
 #load radar data
 mix <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2019mixed&vert.csv",sep=";")

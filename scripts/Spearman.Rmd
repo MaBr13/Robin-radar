@@ -1,0 +1,517 @@
+---
+title: "Spearman correlations"
+author: "M. Bradaric"
+date: "1/8/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+## Env. variables on count
+### 2019
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+require(gridExtra)
+library(ggpubr)
+library(dplyr)
+birds1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2019_br.csv",sep=";")
+weather1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2019_wr.csv",sep=";")
+birds2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019_br.csv",sep=";")
+weather2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019_wr.csv",sep=";")
+rownames(weather1) <- NULL
+rownames(weather2) <- NULL
+
+joinedS <- left_join(birds1,weather1,by=c("time","altitude_layer"))
+my_dataS <-  joinedS %>%
+  group_by(altitude_layer)%>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+joinedA <- left_join(birds2,weather2,by=c("time","altitude_layer"))
+my_dataA <-  joinedA %>%
+  group_by(altitude_layer)%>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+```
+
+#### wind_assistance
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+windS <- ggscatter(my_dataS, x = "wind_ass", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "wind_ass", ylab = "count")
+windA <- ggscatter(my_dataA, x = "wind_ass", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "wind_ass", ylab = "count")
+grid.arrange(windS, windA, ncol=2)
+```
+
+#### temp 
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+tempS <- ggscatter(my_dataS, x = "temp", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "temp", ylab = "count")
+
+tempA <- ggscatter(my_dataA, x = "temp", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "temp", ylab = "count")
+grid.arrange(tempS, tempA, ncol=2)
+```
+
+#### cc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+ccS <- ggscatter(my_dataS, x = "cc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "cc", ylab = "count")
+ccA <- ggscatter(my_dataA, x = "cc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "cc", ylab = "count")
+grid.arrange(ccS, ccA, ncol=2)
+```
+
+#### crwc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+crwcS <- ggscatter(my_dataS, x = "crwc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "crwc", ylab = "count")
+crwcA <- ggscatter(my_dataA, x = "crwc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "crwc", ylab = "count")
+grid.arrange(crwcS, crwcA, ncol=2)
+```
+
+#### rh
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+
+rhS <- ggscatter(my_dataS, x = "rh", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "rh", ylab = "count")
+rhA <- ggscatter(my_dataA, x = "rh", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "rh", ylab = "count")
+grid.arrange(rhS, rhA, ncol=2)
+
+```
+### 2020
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+require(gridExtra)
+library(ggpubr)
+library(dplyr)
+birds3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2020_br.csv",sep=";")
+weather3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2020_wr.csv",sep=";")
+birds4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2020_br.csv",sep=";")
+weather4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2020_wr.csv",sep=";")
+rownames(weather3) <- NULL
+rownames(weather4) <- NULL
+
+joinedS1 <- left_join(birds3,weather3,by=c("time","altitude_layer"))
+my_dataS1 <-  joinedS1 %>%
+  group_by(altitude_layer)%>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+joinedA1 <- left_join(birds4,weather4,by=c("time","altitude_layer"))
+my_dataA1 <-  joinedA1 %>%
+  group_by(altitude_layer)%>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+```
+
+#### wind_assistance
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+windS1 <- ggscatter(my_dataS1, x = "wind_ass", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "wind_ass", ylab = "count")
+windA1 <- ggscatter(my_dataA1, x = "wind_ass", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "wind_ass", ylab = "count")
+grid.arrange(windS1, windA1, ncol=2)
+```
+
+#### temp 
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+tempS1 <- ggscatter(my_dataS1, x = "temp", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "temp", ylab = "count")
+
+tempA1 <- ggscatter(my_dataA1, x = "temp", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "temp", ylab = "count")
+grid.arrange(tempS1, tempA1, ncol=2)
+```
+
+#### cc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+ccS1 <- ggscatter(my_dataS1, x = "cc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "cc", ylab = "count")
+ccA1 <- ggscatter(my_dataA1, x = "cc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "cc", ylab = "count")
+grid.arrange(ccS1, ccA1, ncol=2)
+```
+
+#### crwc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+crwcS1 <- ggscatter(my_dataS1, x = "crwc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "crwc", ylab = "count")
+crwcA1 <- ggscatter(my_dataA1, x = "crwc", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "crwc", ylab = "count")
+grid.arrange(crwcS1, crwcA1, ncol=2)
+```
+
+#### rh
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+
+rhS1 <- ggscatter(my_dataS1, x = "rh", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "rh", ylab = "count")
+rhA1 <- ggscatter(my_dataA1, x = "rh", y = "count", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "rh", ylab = "count")
+grid.arrange(rhS1, rhA1, ncol=2)
+
+```
+
+## Altitude of min/max env. variable on altitude of count
+### 2019
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+my_dataSa <- joinedS %>%
+  group_by(night.x,altitude_layer) %>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+my_dataAa <- joinedA %>%
+  group_by(night.x,altitude_layer) %>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+alt_countS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.max(count))
+
+alt_countA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.max(count))
+
+alt_tempS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.max(temp))
+
+alt_tempA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.max(temp))
+
+alt_windS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.max(wind_ass))
+
+alt_windA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.max(wind_ass))
+
+alt_rhS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.min(rh))
+
+alt_rhA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.min(rh))
+
+alt_ccS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.min(cc))
+
+alt_ccA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.min(cc))
+
+alt_crwcS <- my_dataSa %>%
+  group_by(night.x) %>%
+  slice(which.min(crwc))
+
+alt_crwcA <- my_dataAa %>%
+  group_by(night.x) %>%
+  slice(which.min(crwc))
+
+my_dataSaa <- Reduce(function(...) merge(..., by="night.x",all.x=TRUE), list(alt_countS, alt_tempS, alt_windS,alt_crwcS,alt_rhS,alt_ccS))
+my_dataSaaa <- my_dataSaa[,c(1:2,9,16,23,30,37)]
+colnames(my_dataSaaa)[colnames(my_dataSaaa)==c("night.x","altitude_layer.x","altitude_layer.y","altitude_layer.x.1", "altitude_layer.y.1","altitude_layer.x.2","altitude_layer.y.2")] <- c("night","alt_cnt","alt_t","alt_w","alt_cw","alt_rh","alt_cc")
+
+my_dataAaa <- Reduce(function(...) merge(..., by="night.x",all.x=TRUE), list(alt_countA, alt_tempA, alt_windA,alt_crwcA,alt_rhA,alt_ccA))
+my_dataAaaa <- my_dataAaa[,c(1:2,9,16,23,30,37)]
+colnames(my_dataAaaa)[colnames(my_dataAaaa)==c("night.x","altitude_layer.x","altitude_layer.y","altitude_layer.x.1", "altitude_layer.y.1","altitude_layer.x.2","altitude_layer.y.2")] <- c("night","alt_cnt","alt_t","alt_w","alt_cw","alt_rh","alt_cc")
+
+```
+
+#### wind
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+windSa <- ggscatter(my_dataSaaa, x = "alt_w", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_w", ylab = "alt_count")
+
+windAa <- ggscatter(my_dataAaaa, x = "alt_w", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_w", ylab = "alt_count")
+
+grid.arrange(windSa, windAa, ncol=2)
+
+```
+
+#### temp
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+
+tempSa <- ggscatter(my_dataSaaa, x = "alt_t", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_t", ylab = "alt_count")
+
+tempAa <- ggscatter(my_dataAaaa, x = "alt_t", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_t", ylab = "alt_count")
+
+grid.arrange(tempSa, tempAa, ncol=2)
+
+```
+
+#### cc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+ccSa <- ggscatter(my_dataSaaa, x = "alt_cc", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cc", ylab = "alt_count")
+ccAa <- ggscatter(my_dataAaaa, x = "alt_cc", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cc", ylab = "alt_count")
+grid.arrange(ccSa, ccAa, ncol=2)
+```
+
+#### rh
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+rhSa <- ggscatter(my_dataSaaa, x = "alt_rh", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_rh", ylab = "alt_count")
+rhAa <- ggscatter(my_dataAaaa, x = "alt_rh", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_rh", ylab = "alt_count")
+grid.arrange(rhSa, rhAa, ncol=2)
+```
+
+#### crwc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+crwcSa <- ggscatter(my_dataSaaa, x = "alt_cw", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cw", ylab = "alt_count")
+crwcAa <- ggscatter(my_dataAaaa, x = "alt_cw", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cw", ylab = "alt_count")
+```
+
+
+### 2020
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
+my_dataSa1 <- joinedS1 %>%
+  group_by(night.x,altitude_layer) %>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+my_dataAa1 <- joinedA1 %>%
+  group_by(night.x,altitude_layer) %>%
+  summarise(count=sum(count,na.rm = T), wind_ass=mean(wind_ass),temp=mean(temp),rh=mean(r),
+            crwc=mean(crwc),cc=mean(cc))
+
+alt_countS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(count))
+
+alt_countA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(count))
+
+alt_tempS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(temp))
+
+alt_tempA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(temp))
+
+alt_windS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(wind_ass))
+
+alt_windA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.max(wind_ass))
+
+alt_rhS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(rh))
+
+alt_rhA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(rh))
+
+alt_ccS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(cc))
+
+alt_ccA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(cc))
+
+alt_crwcS1 <- my_dataSa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(crwc))
+
+alt_crwcA1 <- my_dataAa1 %>%
+  group_by(night.x) %>%
+  slice(which.min(crwc))
+
+my_dataSaa1 <- Reduce(function(...) merge(..., by="night.x",all.x=TRUE), list(alt_countS1, alt_tempS1, alt_windS1,alt_crwcS1,alt_rhS1,alt_ccS1))
+my_dataSaaa1 <- my_dataSaa1[,c(1:2,9,16,23,30,37)]
+colnames(my_dataSaaa1)[colnames(my_dataSaaa1)==c("night.x","altitude_layer.x","altitude_layer.y","altitude_layer.x.1", "altitude_layer.y.1","altitude_layer.x.2","altitude_layer.y.2")] <- c("night","alt_cnt","alt_t","alt_w","alt_cw","alt_rh","alt_cc")
+
+my_dataAaa1 <- Reduce(function(...) merge(..., by="night.x",all.x=TRUE), list(alt_countA1, alt_tempA1, alt_windA1,alt_crwcA1,alt_rhA1,alt_ccA1))
+my_dataAaaa1 <- my_dataAaa1[,c(1:2,9,16,23,30,37)]
+colnames(my_dataAaaa1)[colnames(my_dataAaaa1)==c("night.x","altitude_layer.x","altitude_layer.y","altitude_layer.x.1", "altitude_layer.y.1","altitude_layer.x.2","altitude_layer.y.2")] <- c("night","alt_cnt","alt_t","alt_w","alt_cw","alt_rh","alt_cc")
+
+```
+
+#### wind
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+windSa1 <- ggscatter(my_dataSaaa1, x = "alt_w", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_w", ylab = "alt_count")
+
+windAa1 <- ggscatter(my_dataAaaa1, x = "alt_w", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_w", ylab = "alt_count")
+
+grid.arrange(windSa1, windAa1, ncol=2)
+
+```
+
+#### temp
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+
+tempSa1 <- ggscatter(my_dataSaaa1, x = "alt_t", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_t", ylab = "alt_count")
+
+tempAa1 <- ggscatter(my_dataAaaa1, x = "alt_t", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_t", ylab = "alt_count")
+
+grid.arrange(tempSa1, tempAa1, ncol=2)
+
+```
+
+#### cc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+ccSa1 <- ggscatter(my_dataSaaa1, x = "alt_cc", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cc", ylab = "alt_count")
+ccAa1 <- ggscatter(my_dataAaaa1, x = "alt_cc", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cc", ylab = "alt_count")
+grid.arrange(ccSa1, ccAa1, ncol=2)
+```
+
+#### rh
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+rhSa1 <- ggscatter(my_dataSaaa1, x = "alt_rh", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_rh", ylab = "alt_count")
+rhAa1 <- ggscatter(my_dataAaaa1, x = "alt_rh", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_rh", ylab = "alt_count")
+grid.arrange(rhSa1, rhAa1, ncol=2)
+```
+
+#### crwc
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+crwcSa1 <- ggscatter(my_dataSaaa1, x = "alt_cw", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cw", ylab = "alt_count")
+crwcAa1 <- ggscatter(my_dataAaaa1, x = "alt_cw", y = "alt_cnt", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "alt_cw", ylab = "alt_count")
+```

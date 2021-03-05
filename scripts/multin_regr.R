@@ -5,14 +5,14 @@
 library(dplyr)
 
 #data prep
-birds1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2019_br.csv",sep=";")
-weather1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2019_wr.csv",sep=";")
-birds2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019_br.csv",sep=";")
-weather2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019_wr.csv",sep=";")
-birds3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2020_br.csv",sep=";")
-weather3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring_2020_wr.csv",sep=";")
-birds4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2020_br.csv",sep=";")
-weather4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2020_wr.csv",sep=";")
+birds1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/spring_2019_br.csv",sep=";")
+weather1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/spring_2019_wr.csv",sep=";")
+birds2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/autumn_2019_br.csv",sep=";")
+weather2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/autumn_2019_wr.csv",sep=";")
+birds3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/spring_2020_br.csv",sep=";")
+weather3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/spring_2020_wr.csv",sep=";")
+birds4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/autumn_2020_br.csv",sep=";")
+weather4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/autumn_2020_wr.csv",sep=";")
 rownames(weather1) <- NULL
 rownames(weather2) <- NULL
 rownames(weather3) <- NULL
@@ -27,7 +27,7 @@ Spring <- left_join(birdsS,weatherS,by=c("time","altitude_layer"),keep=FALSE)
 Autumn <- left_join(birdsA,weatherA,by=c('time','altitude_layer'))
 #check the numbers and proportions of birds at different altitudes per night
 #SPRING
-Spring$height <- with(Spring,ifelse(Spring$altitude_layer<=100 ,"low","high"))
+Spring$height <- with(Spring,ifelse(Spring$altitude_layer<=300 ,"low","high"))
 Spring$height = factor(Spring$height, levels=c("high","low"), labels=c("high","low"))
 Spring$night <- as.POSIXct(Spring$night.x,tz="UTC")
 

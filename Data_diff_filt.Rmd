@@ -1,0 +1,229 @@
+---
+title: "Data with different filters"
+author: "M. Bradaric"
+date: "2/7/2021"
+output: html_document
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+---
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(imputeTS)
+library(plotly)
+
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert.csv",sep=";")
+vert$timestamph <- as.POSIXct(vert$timestamph,tz='UTC')
+vertH <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_hourly_vert.csv",sep=";")
+vertH$timestamph <- as.POSIXct(vertH$timestamph,tz='UTC')
+clutV <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_2019-2020_vert_hourly.csv",sep=";")
+clutV$timestamph <- as.POSIXct(clutV$timestamph,tz='UTC')
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+birds1 <- ggplot(vert, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert$classification, fill=vert$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  facet_wrap(~"Birds-database")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig1 <- ggplotly(birds1,dynamicTicks=TRUE)
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+rain <- read.csv("C:/Users/mbradar/Documents/Rain-Johannes/rain_2019-2020_L.csv", sep=";")
+rain$timestamph <- as.POSIXct(rain$timestamph,tz='UTC')
+colnames(rain)[colnames(rain)==c("timestampx")] <- c("timestamp")
+rain$timestamp <- as.POSIXct(rain$timestamp, tz="UTC")
+rain$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain$timestamp), hour(rain$timestamp),sep= ' '))) 
+rain <- subset(rain,mean<500)
+vert$timestamp <- as.POSIXct(vert$timestamp,tz='UTC')
+vert <- left_join(vert,rain,by=c("timestamph"))
+vert1$mean<- na_interpolation(vert1$mean, option ="linear")
+vert <- subset(vert,vert1$mean==0)
+
+birds2 <- ggplot(vert1, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert1$classification, fill=vert1$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"KNMI_rain filter")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig2 <- ggplotly(birds2,dynamicTicks=TRUE)
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+vert2 <- left_join(vert,clutV,by='timestamph')
+vert2 <- subset(vert2,l_mask<=0.18)
+
+birds3 <- ggplot(vert2, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert2$classification, fill=vert2$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"Clutter filter <= 0.18")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig3 <- ggplotly(birds3,dynamicTicks=TRUE)
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+vert3 <- left_join(vert,clutV,by='timestamph')
+vert3 <- subset(vert3,l_mask>=0.01)
+
+birds4 <- ggplot(vert3, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert3$classification, fill=vert3$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"Clutter filter >= 0.01")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig4 <- ggplotly(birds4,dynamicTicks=TRUE)
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+vert4 <- left_join(vert,clutV,by='timestamph')
+vert4 <- subset(vert4,l_mask>=0.01 & l_mask<=0.18)
+
+birds5 <- ggplot(vert4, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert4$classification, fill=vert4$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"Clutter filter between 0.01 and 0.18")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig5 <- ggplotly(birds5,dynamicTicks=TRUE)
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=15, out.width = '110%'}
+vert5 <- left_join(vert,clutV,by='timestamph')
+vert5 <- left_join(vert5,rain,by='timestamph')
+vert5 <- vert5[which(vert5$mean==0 & vert5$l_mask>=0.01 & vert5$l_mask<=0.18),]
+
+birds6 <- ggplot(vert5, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert5$classification, fill=vert5$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"Clutter filter between 0.01 and 0.18 and KNMI rain")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig6 <- ggplotly(birds6,dynamicTicks=TRUE)
+```
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=15, out.width = '110%'}
+vert6 <- left_join(vert,vertH,by='timestamph')
+vert6$p_flocks <- (vert6$nr_flocks*100)/vert6$count
+vert6$p_small <- (vert6$small*100)/vert6$count
+vert6$p_medium <- (vert6$medium*100)/vert6$count
+vert6$p_large <- (vert6$large*100)/vert6$count
+vert6$majority_f <- ifelse(vert6$p_flocks>= vert6$p_large + vert6$p_medium + vert6$p_small,TRUE,FALSE)
+vert6 <- subset(vert6,majority_f==FALSE)
+
+birds7 <- ggplot(vert6, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert6$classification, fill=vert6$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=T)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=T)+
+  theme_bw()+
+  facet_wrap(~"Percentage of flocks higher or equal to percentage off all other classes")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+fig7 <- ggplotly(birds7,dynamicTicks=TRUE)
+
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=15, out.width = '110%'}
+fig <-  subplot(fig1,fig2,fig3,fig4,fig5,fig6,fig7, nrows = 7, shareX = TRUE) 
+fig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")), titleX = TRUE, titleY = TRUE) 
+```
+

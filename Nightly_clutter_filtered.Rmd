@@ -1,0 +1,443 @@
+---
+title: "Nigthly clutter filtered"
+author: "M. Bradaric"
+date: "2/12/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+---
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
+library(lubridate)
+library(imputeTS)
+library(dplyr)
+library(ggplot2)
+library(suncalc)
+library(plotly)
+
+Sys.setenv(TZ='UTC')
+
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert&mixed.csv",sep=";")
+vert$timestamph <- as.POSIXct(vert$timestamph,tz='UTC')
+vert <- subset(vert,datex>='2019-09-30 17:00:00' & datex<='2019-11-01 07:00:00')
+vert$timestamp <- as.POSIXct(vert$timestamp,tz='UTC')
+rain <- read.csv("C:/Users/mbradar/Documents/Rain-Johannes/rain_2019-2020_L.csv", sep=";")
+colnames(rain)[colnames(rain)==c("timestampx")] <- c("timestamp")
+rain$timestamp <- as.POSIXct(rain$timestamp, tz="UTC")
+rain$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain$timestamp), hour(rain$timestamp),sep= ' '))) 
+rain <- subset(rain,mean<500)
+vert <- left_join(vert,rain,by=c("timestamp"))
+vert$mean<- na_interpolation(vert$mean, option ="linear")
+vert <- subset(vert,vert$mean==0)
+clutter <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_autumn2019_L.csv",sep=";")
+clutterV <- subset(clutter,radar_id==1 | radar_id==4 | radar_id==7 | radar_id==8 | radar_id==10 | radar_id==12)
+colnames(clutterV)[colnames(clutterV)==c("timestamp1")] <- c("timestamp")
+clutterV$timestamp <- as.POSIXct(clutterV$timestamp,tz='UTC')
+hoursA19 <- seq(ymd_hms('2019-09-30 17:00:00'),ymd_hms('2019-11-01 07:00:00'), by="1 min")
+hoursA19 <- as.data.frame(hoursA19)
+colnames(hoursA19)[colnames(hoursA19)==c("hoursA19")] <- c("timestamp")
+hoursA19$date <- date(hoursA19$timestamp)
+sun<- getSunlightTimes(date(hoursA19$timestamp),52.25,4,keep = c("sunrise","sunset"),tz="UTC")
+sun <- dplyr::distinct(sun)
+hoursA19 <- left_join(hoursA19,sun,by=c('date'))
+rm(list=c("sun"))
+hoursA19$light <- with(hoursA19,ifelse(hour(hoursA19$timestamp)>=hour(sunset),"evening",
+                                     ifelse(hour(hoursA19$timestamp)<=hour(sunrise),"night","day")))
+hoursA19$night <- with(hoursA19,ifelse(hoursA19$light=="evening",hoursA19$date,
+                                     ifelse(hoursA19$light=="night",hoursA19$date-lubridate::days(1),0)))
+hoursA19 <- subset(hoursA19,!night==0)
+hoursA19$night <- zoo::as.Date(hoursA19$night,tz="UTC")
+
+rain <- read.csv("c:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2019.csv",sep=';')
+
+colnames(rain)[colnames(rain)==c("timestampx")] <- c("timestamp")
+rain$timestamp <- as.POSIXct(rain$timestamp, tz="UTC")
+rain$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain$timestamp), hour(rain$timestamp),sep= ' '))) 
+rain <- subset(rain,mean<500)
+
+data <- left_join(hoursA19,clutterV,by="timestamp")
+data <- left_join(data,rain, by='timestamp')
+data$mean <- na_interpolation(data$mean, option = 'linear')
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n <- subset(vert,night=='2019-10-01 - 2019-10-02')
+clut_n <- subset(data,night=='2019-10-01')
+
+fig1 <- ggplot(data=birds_n, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n$classification, fill=birds_n$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2019-10-01 - 2019-10-02")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig1 <- ggplotly(fig1,dynamicTicks = TRUE)
+
+fig2 <- plot_ly(clut_n) 
+fig2 <- fig2 %>% add_lines(data=clut_n, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig3 <- plot_ly(clut_n) 
+fig3 <- fig3 %>% add_lines(data=clut_n, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig <-  subplot(fig1,fig3,fig2,nrows = 3, shareX = TRUE) 
+ffig %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE) 
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n1 <- subset(vert,night=='2019-10-02 - 2019-10-03')
+clut_n1 <- subset(data,night=='2019-10-02')
+
+fig4 <- ggplot(data=birds_n1, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n1$classification, fill=birds_n1$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2019-10-02 - 2019-10-03")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig4 <- ggplotly(fig4,dynamicTicks = TRUE)
+
+fig5 <- plot_ly(clut_n1) 
+fig5 <- fig5 %>% add_lines(data=clut_n1, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig6 <- plot_ly(clut_n1) 
+fig6 <- fig6 %>% add_lines(data=clut_n1, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig1 <-  subplot(fig4,fig6,fig5,nrows = 3, shareX = TRUE) 
+ffig1 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE) 
+
+```
+
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n6 <- subset(vert,night=='2019-10-20 - 2019-10-21')
+clut_n6 <- subset(data,night=='2019-10-20')
+
+fig19 <- ggplot(data=birds_n6, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n6$classification, fill=birds_n6$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2019-10-20 - 2019-10-21")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig19 <- ggplotly(fig19,dynamicTicks = TRUE)
+
+fig20 <- plot_ly(clut_n6) 
+fig20 <- fig20 %>% add_lines(data=clut_n6, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig21 <- plot_ly(clut_n6) 
+fig21 <- fig21 %>% add_lines(data=clut_n6, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig6 <-  subplot(fig19,fig21,fig20,nrows = 3, shareX = TRUE) 
+ffig6 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n7 <- subset(vert,night=='2019-10-28 - 2019-10-29')
+clut_n7 <- subset(data,night=='2019-10-28')
+
+fig22 <- ggplot(data=birds_n7, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n7$classification, fill=birds_n7$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2019-10-28 - 2019-10-29")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig22 <- ggplotly(fig22,dynamicTicks = TRUE)
+
+fig23 <- plot_ly(clut_n7) 
+fig23 <- fig23 %>% add_lines(data=clut_n7, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig24 <- plot_ly(clut_n7) 
+fig24 <- fig24 %>% add_lines(data=clut_n7, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig7 <-  subplot(fig22,fig24,fig23,nrows = 3, shareX = TRUE) 
+ffig7 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+vert1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert&mixed.csv",sep=";")
+vert1$timestamph <- as.POSIXct(vert1$timestamph,tz='UTC')
+vert1 <- subset(vert1,datex>='2020-09-30 17:00:00' & datex<='2020-11-01 07:00:00')
+vert1$timestamp <- as.POSIXct(vert1$timestamp,tz='UTC')
+clutter1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_autumn2020_L.csv",sep=";")
+clutterV1 <- subset(clutter1,radar_id==1 | radar_id==4 | radar_id==7 | radar_id==8 | radar_id==10 | radar_id==12)
+colnames(clutterV1)[colnames(clutterV1)==c("timestamp1")] <- c("timestamp")
+clutterV1$timestamp <- as.POSIXct(clutterV1$timestamp,tz='UTC')
+hoursA20 <- seq(ymd_hms('2020-09-30 17:00:00'),ymd_hms('2020-11-01 07:00:00'), by="1 min")
+hoursA20 <- as.data.frame(hoursA20)
+colnames(hoursA20)[colnames(hoursA20)==c("hoursA20")] <- c("timestamp")
+hoursA20$date <- date(hoursA20$timestamp)
+sun1<- getSunlightTimes(date(hoursA20$timestamp),52.25,4,keep = c("sunrise","sunset"),tz="UTC")
+sun1 <- dplyr::distinct(sun1)
+hoursA20 <- left_join(hoursA20,sun1,by=c('date'))
+rm(list=c("sun1"))
+hoursA20$light <- with(hoursA20,ifelse(hour(hoursA20$timestamp)>=hour(sunset),"evening",
+                                     ifelse(hour(hoursA20$timestamp)<=hour(sunrise),"night","day")))
+hoursA20$night <- with(hoursA20,ifelse(hoursA20$light=="evening",hoursA20$date,
+                                     ifelse(hoursA20$light=="night",hoursA20$date-lubridate::days(1),0)))
+hoursA20 <- subset(hoursA20,!night==0)
+hoursA20$night <- zoo::as.Date(hoursA20$night,tz="UTC")
+
+rain1 <- read.csv("c:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2020.csv",sep=';')
+
+colnames(rain1)[colnames(rain1)==c("timestampx")] <- c("timestamp")
+rain1$timestamp <- as.POSIXct(rain1$timestamp, tz="UTC")
+rain1$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain1$timestamp), hour(rain1$timestamp),sep= ' '))) 
+rain1 <- subset(rain1,mean<500)
+
+data1 <- left_join(hoursA20,clutterV1,by="timestamp")
+data1 <- left_join(data1,rain1, by='timestamp')
+data1$mean <- na_interpolation(data1$mean, option = 'linear')
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n8 <- subset(vert1,night=='2020-10-05 - 2020-10-06')
+clut_n8 <- subset(data1,night=='2020-10-05')
+
+fig25 <- ggplot(data=birds_n8, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n8$classification, fill=birds_n8$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2020-10-05 - 2020-10-06")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig25 <- ggplotly(fig25,dynamicTicks = TRUE)
+
+fig26 <- plot_ly(clut_n8) 
+fig26 <- fig26 %>% add_lines(data=clut_n8, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig27 <- plot_ly(clut_n8) 
+fig27 <- fig27 %>% add_lines(data=clut_n8, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig8 <-  subplot(fig25,fig27,fig26,nrows = 3, shareX = TRUE) 
+ffig8 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n9 <- subset(vert1,night=='2020-10-06 - 2020-10-07')
+clut_n9 <- subset(data1,night=='2020-10-06')
+
+fig28 <- ggplot(data=birds_n9, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n9$classification, fill=birds_n9$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2020-10-06 - 2020-10-07")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig28 <- ggplotly(fig28,dynamicTicks = TRUE)
+
+fig29 <- plot_ly(clut_n9) 
+fig29 <- fig29 %>% add_lines(data=clut_n9, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig30 <- plot_ly(clut_n9) 
+fig30 <- fig30 %>% add_lines(data=clut_n9, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig9 <-  subplot(fig28,fig30,fig29,nrows = 3, shareX = TRUE) 
+ffig9 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n10 <- subset(vert1,night=='2020-10-15 - 2020-10-16')
+clut_n10 <- subset(data1,night=='2020-10-15')
+
+fig31 <- ggplot(data=birds_n10, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n10$classification, fill=birds_n10$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2020-10-15 - 2020-10-16")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig31 <- ggplotly(fig31,dynamicTicks = TRUE)
+
+fig32 <- plot_ly(clut_n10) 
+fig32 <- fig32 %>% add_lines(data=clut_n10, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig33 <- plot_ly(clut_n10) 
+fig33 <- fig33 %>% add_lines(data=clut_n10, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig10 <-  subplot(fig31,fig33,fig32,nrows = 3, shareX = TRUE) 
+ffig10 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+birds_n11 <- subset(vert1,night=='2020-10-16 - 2020-10-17')
+clut_n11 <- subset(data1,night=='2020-10-16')
+
+fig34 <- ggplot(data=birds_n11, aes(x=timestamp)) +
+  geom_bar(mapping = aes(x = timestamp, y = ..count..,colour=birds_n11$classification, fill=birds_n11$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  ggtitle("2020-10-16 - 2020-10-17")+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "none",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 11, face = "bold"))+
+  #scale_x_datetime(date_breaks="min", date_labels="%Y-%m-%d",
+   #                limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig34 <- ggplotly(fig34,dynamicTicks = TRUE)
+
+fig35 <- plot_ly(clut_n11) 
+fig35 <- fig35 %>% add_lines(data=clut_n11, name="rain_V", x = ~timestamp, y = ~r_mask*100,
+                             line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig36 <- plot_ly(clut_n11) 
+fig36 <- fig36 %>% add_lines(data=clut_n11, name="rain_KNMI", x = ~timestamp, y = ~mean,
+                           line = list(color="royalblue4",width=0.5),showlegend=TRUE)
+
+ffig11 <-  subplot(fig34,fig36,fig35,nrows = 3, shareX = TRUE) 
+ffig11 %>% rangeslider(start=as.POSIXct("2019-10-01 18:00:00"),end=as.POSIXct("2019-10-01 21:00:00"), borderwidth = 0.2) %>%
+  layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+         yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+         titleX = TRUE, titleY = TRUE)
+```

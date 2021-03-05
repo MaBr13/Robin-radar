@@ -358,8 +358,8 @@ weather$time <- as.POSIXct(weather$time,tz="UTC")
 
 
 #make a list of all days and alt layers in spring
-final <- vector("list", 16)
-c <- seq(0,1500,100)
+final <- vector("list", 15)
+c <- seq(100,1500,100)
 time <- seq(as.POSIXct("2019-08-15 00:00:00"), as.POSIXct("2019-12-01 00:00:00"), by="hour")
 time <- as.data.frame(time)
 

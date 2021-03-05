@@ -1,0 +1,134 @@
+---
+title: "geometry"
+author: "M. Bradaric"
+date: "3/3/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+---
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
+library(lubridate)
+library(DBI)
+library(sf)
+library(RPostgreSQL)
+library(suncalc)
+library(dplyr)
+
+
+geometry <- list()
+database <- "rws01"
+con <- dbConnect("PostgreSQL", 
+                 dbname=database, # database name  
+                 host='robin1.e-ecology.nl', 
+                 user= "maja_bradaric",# username
+                 password="55nebitno992@") # password
+
+
+timestamps <- c('2019-10-01 23:00:00','2019-10-20 17:00:00','2019-10-28 03:00:00','2020-10-06 00:00:00',
+                '2020-10-15 17:00:00')
+
+for(k in 1:length(timestamps)){
+  
+ geometry[[k]] <- st_read(con,query = paste0("select track.id as track_id,track.tracktype, st_x(trackestimate.position) as x,
+                         st_y(trackestimate.position) as y, st_z(trackestimate.position) as z
+                         from public.track
+                         INNER JOIN public.trackestimate 
+                         ON track.id=trackestimate.track_id
+                         where track.timestamp_start BETWEEN '", as.character(timestamps[k]) , "' AND '", as.character(as.POSIXct(timestamps[k])+hours(1)) ,"' 
+                         AND track.tracktype in ('RaAzEl','RaEl')"))
+}
+
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert&mixed.csv",sep=";")
+vert <- vert[,c(1,5)]
+vert$class <- with(vert, ifelse(classification=="SMALL_BIRD",1,
+                                ifelse(classification=="MEDIUM_BIRD",2,
+                                       ifelse(classification=="LARGE_BIRD",3,4))))
+
+for (k in 1:length(geometry)){
+  geometry[[k]] <- left_join(geometry[[k]],vert,by="track_id")
+}
+
+for (k in 1:length(geometry)){
+  geometry[[k]] <- subset(geometry[[k]],z>=0 & z<=1500)
+}
+
+for (k in 1:length(geometry)){
+  geometry[[k]] <- subset(geometry[[k]],!is.na(geometry[[k]]$classification))
+}
+
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+library(plotly)
+fig1 <- plot_ly(geometry[[1]], x = ~x, y = ~y, z = ~z, split=~track_id, type = 'scatter3d', mode = 'lines',
+               opacity = 1, line = list(width = 6, reverscale = FALSE))
+fig1
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+library(plotly)
+fig2 <- plot_ly(geometry[[2]], x = ~x, y = ~y, z = ~z, split=~track_id, type = 'scatter3d', mode = 'lines',
+               opacity = 1, line = list(width = 6, reverscale = FALSE))
+fig2
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+library(plotly)
+fig3 <- plot_ly(geometry[[3]], x = ~x, y = ~y, z = ~z, split=~track_id, type = 'scatter3d', mode = 'lines',
+               opacity = 1, line = list(width = 6, reverscale = FALSE))
+fig3
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+library(plotly)
+fig4 <- plot_ly(geometry[[4]], x = ~x, y = ~y, z = ~z, split=~track_id, type = 'scatter3d', mode = 'lines',
+               opacity = 1, line = list(width = 6,  reverscale = FALSE))
+fig4
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width = '110%'}
+library(plotly)
+fig5 <- plot_ly(geometry[[5]], x = ~x, y = ~y, z = ~z, split=~track_id, type = 'scatter3d', mode = 'lines',
+               opacity = 1, line = list(width = 6,  reverscale = FALSE))
+fig5
+```

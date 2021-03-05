@@ -5,18 +5,6 @@ date: "2/1/2021"
 output: html_document
 ---
 
----
-title: "Clutter, rain and waves"
-author: "M. Bradaric"
-date: "1/26/2021"
-output:
-  html_document:
-    code_folding: "hide"
-    number_sections: false
-    keep_md: true
-    fig_width: 6 
-    fig_height: 4
----
 <style type="text/css">
 
 body{ /* Normal  */
@@ -58,99 +46,395 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(imputeTS)
+library(suncalc)
 
-sea <- read.csv("C:/Users/mbradar/Documents/Sea_waves/sea_2019-2020_L_2.csv",sep=";")
-sea <- sea[,c(2,20:21,23)]
-colnames(sea)[colnames(sea)==c("MEETPUNT_IDENTIFICATIE","WAARNEMINGDATUM","WAARNEMINGTIJD",'NUMERIEKEWAARDE')] <- c("station","date","time","height")
-sea <- subset(sea,station=='IJgeul 1 boei')
-sea$timestamp <- paste(sea$date, sea$time, sep= ' ')
-sea$timestamp <- as.POSIXct(sea$timestamp,format="%d-%m-%Y %H:%M:%S")
-sea$timestamph <- ymd_h(paste(date(sea$timestamp), hour(sea$timestamp),sep= ' '))
-sea <- subset(sea,height<10000)
+seaH <- read.csv("C:/Users/mbradar/Documents/Sea_waves/sea_2019_2020_L_hourly.csv",sep=";")
+vertH <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_hourly_vert.csv",sep=";")
+vertHl <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_hourly_vert_low.csv",sep=";")
+clutH <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_2019-2020_horiz_hourly.csv",sep=";")
+clutV <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_2019-2020_vert_hourly.csv",sep=";")
+rainH <- read.csv("C:/Users/mbradar/Documents/Rain-Johannes/rain_2019-2020_L_hourly.csv", sep=";")
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert.csv",sep=";")
 
-seaH <- sea %>%
-  group_by(timestamph) %>%
-  summarise(height=mean(height))
-```
-
-```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
-mix1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2019vert.csv",sep=";")
-mix1 <- mix1[,-(7)]
-mix2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/autumn_2019mixedandvert.csv",sep=";")
-mix3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/spring2020vert.csv",sep=";")
-mix3 <- mix3[,-(7)]
-mix4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Autumn_2020_mixed&vert.csv",sep=";")
-mix4 <- mix4[,-(7)]
-
-listm <- list(mix1,mix2,mix3,mix4)
 ```
 
 
-```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE}
-mix <- do.call("rbind",listm)
 
-vert <- subset(mix,tracktype=='RaEl')
-vert <- subset(vert,altitude>=0)
-vert <- subset(vert,distance>=500 & distance<=1500 | distance<=-500 & distance>=-1500)
-vert$timestamp_start <- as.POSIXct(vert$timestamp_start, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-vert$timestamp <- as.POSIXct(ymd_hm(paste(date(vert$timestamp_start), vert$hourx,minute(vert$timestamp_start), sep= ' ')))
-vert$timestamph<- as.character(ymd_h(paste(date(vert$timestamp_start), hour(vert$timestamp_start),sep= ' ')))
-vert$timestamph <- as.POSIXct(vert$timestamph,format="%Y-%m-%d %H:%M:%S")
-vertH <- vert %>%
-  group_by(timestamph) %>%
-  summarise(count=length(track_id))
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=20,out.width = '110%'}
+library(ggpmisc)
+library(ggpubr)
+
+data <- left_join(clutV,rainH,by='timestamph')
+data <- left_join(data,clutH,by='timestamph')
+data <- left_join(data,seaH,by='timestamph')
+
+birds <- left_join(data,vertH,by='timestamph')
+birds$timestamph <- as.POSIXct(birds$timestamph,tz='UTC')
+birds$p_flocks <- (birds$nr_flocks*100)/birds$count
+birds$p_small <- (birds$small*100)/birds$count
+birds$p_medium <- (birds$medium*100)/birds$count
+birds$p_large <- (birds$large*100)/birds$count
+birdsl <- left_join(data,vertHl,by='timestamph')
+
+my.formula <- y ~ x 
+
+p1 <- ggplot(data, aes(x=r_mask.x,y=mean))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE,show.legend = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+   xlab('Vertical_rain') + 
+   ylab('Rain_KNMI') 
+
+p2 <- ggplot(data, aes(x=r_mask.x,y=r_mask.y))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  ylab('Horizontal_rain') + 
+   xlab('Vertical_rain') 
+
+p3 <- ggplot(data, aes(x=r_mask.y,y=mean))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Horizontal_rain') + 
+   ylab('Rain_KNMI') 
+
+p4 <- ggplot(data, aes(x=v_mask.x,y=mean))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Vertical_variant') + 
+   ylab('Rain_KNMI') 
+
+p5 <- ggplot(data, aes(x=v_mask.y,y=mean))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Horizontal_variant') + 
+   ylab('Rain_KNMI') 
+
+p6 <- ggplot(data, aes(x=v_mask.x,y=v_mask.y))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+ 
+  xlab('Vertical_variant') + 
+   ylab('Horizontal_variant') 
+
+
+p7 <- ggplot(subset(data, timestamph<='2019-12-31 23:00:00'), aes(x=v_mask.x,y=height))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  ylab('Waves') + 
+   xlab('Vertical_variant') 
+
+
+p8 <- ggplot(subset(data, timestamph<='2019-12-31 23:00:00'), aes(x=v_mask.y,y=height))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  ylab('Waves') + 
+   xlab('Horizontal_variant') 
+
+p9 <- ggplot(subset(data, timestamph<='2019-12-31 23:00:00'), aes(x=r_mask.x,y=height))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  ylab('Waves') + 
+   xlab('Vertical_rain') 
+
+p10 <- ggplot(subset(data, timestamph<='2019-12-31 23:00:00'), aes(x=r_mask.y,y=height))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  ylab('Waves') + 
+   xlab('Horizontal_rain') 
+
+p11 <- ggplot(birds, aes(x=height,y=count))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Waves') + 
+   ylab('Bird_counts') 
+
+p12 <- ggplot(birdsl, aes(x=height,y=count))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Waves') + 
+   ylab('Bird_counts') 
+
+p13 <- ggplot(birds, aes(x=mean,y=count))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Bird_counts') 
+
+p13 <- ggplot(birds, aes(x=mean,y=count))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Bird_counts') 
+
+p14 <- ggplot(birds, aes(x=mean,y=nr_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Nr_flocks')
+
+p15 <- ggplot(birds, aes(x=mean,y=p_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Percentage_flocks') 
+
+p16 <- ggplot(birds, aes(x=r_mask.x,y=count))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Vertical_rain') + 
+   ylab('Bird_counts') 
+
+p17 <- ggplot(birds, aes(x=r_mask.x,y=nr_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Vertical_rain') + 
+   ylab('Nr_flocks')
+
+p18 <- ggplot(birds, aes(x=r_mask.x,y=p_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Vertical_rain') + 
+   ylab('Percentage_flocks')
+
+p19 <- ggplot(birds, aes(x=mean,y=p_small))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Percentage_small') 
+
+p20 <- ggplot(birds, aes(x=mean,y=small))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Rain_KNMI') + 
+   ylab('Nr_small') 
+
+p21 <- ggplot(birds, aes(x=r_mask.y,y=nr_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Horizontal_rain') + 
+   ylab('Nr_flocks')
+
+p22 <- ggplot(birds, aes(x=r_mask.y,y=p_flocks))+
+  geom_point()+
+  stat_smooth(method="lm", se=TRUE,method.args = TRUE)+
+   stat_poly_eq(formula = my.formula, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)+
+  xlab('Horizontal_rain') + 
+   ylab('Percentage_flocks')
+
+ggarrange(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,nrow=11,ncol=2)
+
+```
+
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+hoursS19 <- seq(ymd_hms('2019-02-15 00:00:00'),ymd_hms('2019-06-01 23:00:00'), by="hours")
+hoursA19 <- seq(ymd_hms('2019-08-15 00:00:00'),ymd_hms('2019-12-01 23:00:00'), by="hours")
+hoursS20 <- seq(ymd_hms('2020-02-15 00:00:00'),ymd_hms('2020-06-01 23:00:00'), by="hours")
+hoursA20 <- seq(ymd_hms('2020-08-15 00:00:00'),ymd_hms('2020-12-01 23:00:00'), by="hours")
+allHours <- c(hoursS19,hoursA19,hoursS20,hoursA20)
+allHours <- as.data.frame(allHours)
+colnames(allHours)[colnames(allHours)==c("allHours")] <- c("timestamph")
+allHours$date <- date(allHours$timestamp)
+sun<- getSunlightTimes(unique(allHours$date),52.25,4,keep = c("sunrise","sunset"),tz="UTC")
+allHours <- left_join(allHours,sun,by=c('date'))
+rm(list=c("sun"))
+allHours$light <- with(allHours,ifelse(hour(allHours$timestamp)>=hour(sunset),"evening",
+                                         ifelse(hour(allHours$timestamp)<=hour(sunrise),"night","day")))
+allHours$night <- with(allHours,ifelse(allHours$light=="evening",allHours$date,
+                                        ifelse(allHours$light=="night",allHours$date-lubridate::days(1),0)))
+allHours <- subset(allHours,!night==0)
+allHours$night <- zoo::as.Date(allHours$night,tz="UTC")
+
+final <- left_join(allHours,birds,by='timestamph')
+final$offline <- ifelse(is.na(final$l_mask.x),TRUE, FALSE)
+final$count <- ifelse(is.na(final$count),0,final$count)
+
+
+f1 <- ggplot(data=subset(final,offline==FALSE))+
+  geom_point(aes(x=l_mask.x,y=count),alpha = 0.1)+
+  xlim(c(0,0.6))+
+ # ylim(c(0,800))+
+  labs(y = "Hourly bird count (#)", x = "Filter activity (0-1)")+
+  theme(axis.title = element_text(size = 14,face = "bold"),
+        axis.text = element_text(size = 12,face = "bold"))
+f1
+```
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
+library(data.table)
+sensAnalysis <- data.table(threshold=seq(0.005,0.8,0.005))
+
+## Loop over the range
+for (i in 1:nrow(sensAnalysis)){
+  ## Count the number of hours included at this range that have data
+  sensAnalysis$nHourLand[i] <- nrow(subset(final,offline==FALSE &
+                                                  l_mask.x<=sensAnalysis$threshold[i] &
+                                                  count != 0))
   
+  ## Count the number of hours included at this range that have no data
+  sensAnalysis$nZerosLand[i] <- nrow(subset(final,offline==FALSE &
+                                                   l_mask.x<=sensAnalysis$threshold[i] &
+                                                   count == 0))
+  ## Calculate the percentage of included hours that holds no data
+  sensAnalysis[,percZerosLand:= nZerosLand /nHourLand *100]
+} 
+
+## Also create a data table that holds the differences between sequential steps (so we skip the first threshold)
+deltaHours <- data.table(threshold=seq(0.010,0.8,0.005))
+
+## Change in hours with data
+deltaHours[,dHoursLand:= sensAnalysis$nHourLand[2:nrow(sensAnalysis)]- sensAnalysis$nHourLand[1:nrow(sensAnalysis)-1]]
+## Change in hours without data
+deltaHours[,dZerosLand:= sensAnalysis$nZerosLand[2:nrow(sensAnalysis)]- sensAnalysis$nZerosLand[1:nrow(sensAnalysis)-1]]
+## Relative change (negarive means more zero-track hours are added in next threshold step than hours with data)
+deltaHours[,dDiff:= dHoursLand-dZerosLand]
+
+## Create a data table to use as figure data
+figDb <- melt(deltaHours,
+              id.vars = "threshold",
+              measure.vars = c("dHoursLand","dZerosLand"),
+              variable.name = "type",
+              value.name = "count")
+figDb[type=="dHoursLand", type:="Normal hours"]
+figDb[type=="dZerosLand", type:="0-track hours"]
+setorder(figDb,threshold)
+fillValue <-  c("Normal hours"="dark blue","0-track hours"="dark red")
+
+f2 <-  ggplot()+
+  geom_area(data=figDb, aes(x=threshold, y=count, fill = type), size = 0.5)+
+  geom_line(aes(x=seq(0.01,0.8,0.005), y=deltaHours$dDiff), colour="black", size = 0.75)+
+  scale_fill_manual(name="Hour type", values=fillValue)+
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Delta types"))+
+  geom_vline(xintercept = 0.180,colour="yellow",size=1 )+
+  xlim(c(0,0.5))+
+  labs(x="Filter activity (0-1)", y= "Measurement hours (#)")+
+  theme(axis.title = element_text(size = 14,face = "bold"),
+        axis.text = element_text(size = 12,face = "bold"))
+
+f2
+
 ```
 
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
 
-```{r, results='hide',message=FALSE,echo=FALSE,warning=FALSE}
-clutter1 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_spring2019_L.csv",sep=";")
-clutter2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_autumn2019_L.csv",sep=";")
-clutter3 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_spring2020_L.csv",sep=";")
-clutter4 <- read.csv("C:/Users/mbradar/Documents/Robin/data/clutter_autumn2020_L.csv",sep=";")
-listc <- list(clutter1,clutter2,clutter3,clutter4)
-clutter <- do.call("rbind",listc)
+sensAnalysis1 <- data.table(threshold=seq(0.005,0.8,0.005))
 
-colnames(clutter)[which(names(clutter) == "timestamp1")] <- "timestamp"
-clutter$timestamp <- as.POSIXct(clutter$timestamp,tz="UTC")
-clutter$timestamph <- as.POSIXct(ymd_h(paste(as.Date(clutter$timestamp), hour(clutter$timestamp),sep= ' ')))
-#depending on the year the horizontal radar_id can be 2,3,5,6,9 and 11
-#first check the radar id in the data
-unique(clutter$radar_id)
-clutterH <- subset(clutter,radar_id==2 | radar_id==3 | radar_id==5 | radar_id==6 | radar_id==9 | radar_id==11)
-clutterV <- subset(clutter,radar_id==1 | radar_id==4 | radar_id==7 | radar_id==8 | radar_id==10 | radar_id==12)
+## Loop over the range
+for (i in 1:nrow(sensAnalysis1)){
+  ## Count the number of hours included at this range that have data
+  sensAnalysis1$nHourLand[i] <- nrow(subset(final,offline==FALSE &
+                                                  l_mask.x<=sensAnalysis$threshold[i] &
+                                                  p_flocks!= 0))
+  
+  ## Count the number of hours included at this range that have no data
+  sensAnalysis1$nZerosLand[i] <- nrow(subset(final,offline==FALSE &
+                                                   l_mask.x<=sensAnalysis$threshold[i] &
+                                                   p_flocks == 0))
+  ## Calculate the percentage of included hours that holds no data
+  sensAnalysis1[,percZerosLand:= nZerosLand /nHourLand *100]
+} 
 
-clutH <- clutterH %>%
-  group_by(timestamph)%>%
-  summarise(l_mask=mean(l_mask),v_mask=mean(v_mask),r_mask=mean(r_mask))
+## Also create a data table that holds the differences between sequential steps (so we skip the first threshold)
+deltaHours1 <- data.table(threshold=seq(0.010,0.8,0.005))
 
-clutV <- clutterV %>%
-  group_by(timestamph)%>%
-  summarise(l_mask=mean(l_mask),v_mask=mean(v_mask),r_mask=mean(r_mask))
+## Change in hours with data
+deltaHours1[,dHoursLand:= sensAnalysis1$nHourLand[2:nrow(sensAnalysis1)]- sensAnalysis1$nHourLand[1:nrow(sensAnalysis1)-1]]
+## Change in hours without data
+deltaHours1[,dZerosLand:= sensAnalysis1$nZerosLand[2:nrow(sensAnalysis1)]- sensAnalysis1$nZerosLand[1:nrow(sensAnalysis1)-1]]
+## Relative change (negarive means more zero-track hours are added in next threshold step than hours with data)
+deltaHours1[,dDiff:= dHoursLand-dZerosLand]
+
+## Create a data table to use as figure data
+figDb1 <- melt(deltaHours,
+              id.vars = "threshold",
+              measure.vars = c("dHoursLand","dZerosLand"),
+              variable.name = "type",
+              value.name = "count")
+figDb1[type=="dHoursLand", type:="Normal hours"]
+figDb1[type=="dZerosLand", type:="0-track hours"]
+setorder(figDb1,threshold)
+fillValue1 <-  c("Normal hours"="dark blue","0-track hours"="dark red")
+
+f3 <-  ggplot()+
+  geom_area(data=figDb1, aes(x=threshold, y=count, fill = type), size = 0.5)+
+  geom_line(aes(x=seq(0.01,0.8,0.005), y=deltaHours1$dDiff), colour="black", size = 0.75)+
+  scale_fill_manual(name="Hour type", values=fillValue)+
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Delta types"))+
+  geom_vline(xintercept = 0.01,colour="yellow",size=1)+
+  xlim(c(0,0.5))+
+  labs(x="Filter activity (0-1)", y= "Measurement hours (#)")+
+  theme(axis.title = element_text(size = 14,face = "bold"),
+        axis.text = element_text(size = 12,face = "bold"))
+f3
 ```
-
-
-```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
-rain1 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_spring2019.csv", sep=";")
-rain2<- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2019.csv", sep=";")
-rain3 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_spring2020.csv", sep=";")
-rain4 <- read.table("C:/Users/mbradar/Documents/Rain-Johannes/rain_autumn2020.csv", sep=";")
-
-listr <- list(rain1,rain2,rain3,rain4)
-rain <- do.call("rbind",listr)
-
-colnames(rain)[colnames(rain)==c("timestampx")] <- c("timestamp")
-rain$timestamp <- as.POSIXct(rain$timestamp, tz="UTC")
-rain$timestamph <-as.POSIXct(ymd_h(paste(as.Date(rain$timestamp), hour(rain$timestamp),sep= ' '))) 
-rain <- subset(rain,mean<500)
-
-rainH <- rain %>%
-  group_by(timestamph) %>%
-  summarise(mean=mean(mean))
-```
-
-```{r,results='hide', message=FALSE,echo=FALSE,warning=FALSE,out.width = '110%'}
-rm(list = c("clutter1","clutter2","clutter3","clutter4","mix1","mix2","mix3","mix4",
-            "rain1","rain2","rain3","rain4","listc","listm","listr","mix"))
-```
-

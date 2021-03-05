@@ -32,6 +32,7 @@ Autumn <- do.call("rbind",list(aug,sep,oct,nov))
 write.table(spring,"C:/Users/mbradar/Documents/Robin/data/spring_2020_mixed&vert.csv",sep=';')
 write.table(Autumn,"C:/Users/mbradar/Documents/Robin/data/Autumn_2020_mixed&vert.csv",sep=';')
 
+check2 <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_hourly_vert.csv",sep=";")
 all <- check2 %>%
   group_by(night) %>%
   summarise(vid=sum(count,na.rm = TRUE))
@@ -115,12 +116,10 @@ dens <- ggplot(spring,aes(y=altitude))+
   ylim(0,1500)
 ggsave(filename=paste0("C:/Users/mbradar/Documents/Robin/weather&alt/Luchterduinen/alt_dens_full.png"),dens,dpi=500)
 
-altdif <- subset(vert,altitude_layer>=0 & altitude_layer<500 | 
-                   altitude_layer>=500 & altitude_layer<1000 | 
-                   altitude_layer>=1000 & altitude_layer<1500)
-altdif$height <- with(altdif,ifelse(altdif$altitude_layer>=0 & altdif$altitude_layer<=200,"low",
-                             ifelse(altdif$altitude_layer>=500 & altdif$altitude_layer<=700,"medium","high")))
-altdif$height = factor(altdif$height, levels=c("high","medium","low"), labels=c("high","medium","low"))
+altdif <- subset(vert,altitude_layer>=0 & altitude_layer<300 | 
+                   altitude_layer>=300 & altitude_layer<1500 )
+altdif$height <- ifelse(altdif$altitude_layer>=0 & altdif$altitude_layer<300,"low","high")
+altdif$height = factor(altdif$height, levels=c("high","low"), labels=c("high","low"))
 
 windows(30,15)
 alts <- ggplot(altdif, aes(x = night, y = x)) + 
@@ -137,7 +136,7 @@ ggsave(filename=paste0("C:/Users/mbradar/Documents/Robin/weather&alt/Luchterduin
 dev.off()
 
 windows(30,15)
-perc1 <- ggplot(altdif, aes(x= night,  group=height)) + 
+perc1 <- ggplot(altdif, aes(x=as.Date(night),  group=height)) + 
   geom_bar(aes(y = ..prop.., fill=height, stat="count")) +
   #geom_text(aes( label = scales::percent(..prop..),
   #               y= ..prop.. ), stat= "count", vjust = -.5) +
@@ -148,7 +147,8 @@ perc1 <- ggplot(altdif, aes(x= night,  group=height)) +
     axis.text.x = element_text(angle = 90),
     panel.background = element_rect(fill='white')
   ) +
-  scale_y_continuous(limits=c(0,.3),labels = scales::percent)
+  scale_y_continuous(limits=c(0,.3),labels = scales::percent)+
+  scale_x_date(breaks="days", date_labels="%y-%m-%d",limits=c(as.Date("2019-02-15"), as.Date("2018-06-01")),expand = c(0,0))
 ggsave(filename=paste0("C:/Users/mbradar/Documents/Robin/weather&alt/Luchterduinen/altdif_perc_adj_S.png"),perc1,dpi=500)  
 dev.off()
 

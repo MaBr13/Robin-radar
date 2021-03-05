@@ -33,7 +33,7 @@ rr_vertical_query <- function(schema, day = TRUE, interv = c('2018-11-01 00:00:0
 			rise_set_time(st_y(position),st_x(position),FALSE,timestamp_start) sunset
 			FROM x, ",schema,".track 
 			WHERE timestamp_start BETWEEN start_time AND end_time --AND avg_corrected_mass between 29.40 and 70.80 
-			AND tracktype  in ('RaEl') AND	
+			AND tracktype  in ('RaAzEl') AND	
 			timestamp_start BETWEEN '", interv[1] , "' AND '", interv[2] ,"' 
 		)
 	SELECT track_id,
@@ -91,7 +91,7 @@ ORDER BY timestamp_start;"))
 			rise_set_time(st_y(position),st_x(position),FALSE,timestamp_start) sunset
 			FROM x, ",schema,".track 
 			WHERE timestamp_start BETWEEN start_time AND end_time --AND avg_corrected_mass between 29.40 and 70.80 
-			AND tracktype  in ('RaEl') AND 
+			AND tracktype  in ('RaAzEl') AND 
 			timestamp_start BETWEEN '", interv[1] , "' AND '", interv[2] ,"' 
 		)
 	SELECT track_id,
@@ -100,7 +100,7 @@ ORDER BY timestamp_start;"))
 	radar_location, 
 	st_centroid, 
 	distance, 
-	classification, 
+	classification,
 	timestamp_start,
 	nr_of_plots,
 	timestamp_start::date datex, 
@@ -285,7 +285,7 @@ rr_vertical_density <- function(data=tt, res=50,limits=NULL,vertical_range=c(0,4
 # SCRIPT 
 
 # set the database of interest 
-database <-'gemini' # SET PARAMETER 
+database <-'rws01' # SET PARAMETER 
 # set directory where you want to save the output (here I chose the home directory)
 dir <- '~/Robin/plots/radar_beam/combination'
 # connect to the database 
@@ -301,10 +301,11 @@ con <- dbConnect("PostgreSQL",
 # IMPORT DATA 
 tts <- rr_vertical_query(schema='public', # select the schema
                         day=FALSE, # if day is false only tracks during the night of the specified interval are imported
-                        interv=c('2018-11-01 00:00:00','2018-12-01 00:00:00')) 
+                        interv=c('2019-05-01 00:00:00','2019-06-01 00:00:00')) 
 beep()
 # FILTER DATA - filter tracks to keep only birds (removes mainly insects)
 tt_filtered <- subset(tts, avg_corrected_mass >= 29.40 & avg_corrected_mass <= 70.80)
+write.table(tt_filtered,"C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/may_2019_mix.csv",sep=";")
 library()
 # DENSITY PLOTS 
 

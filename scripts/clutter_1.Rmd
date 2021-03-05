@@ -1,0 +1,290 @@
+---
+title: "Clutter, rain and waves"
+author: "M. Bradaric"
+date: "1/26/2021"
+output:
+  html_document:
+    code_folding: "hide"
+    number_sections: false
+    keep_md: true
+    fig_width: 6 
+    fig_height: 4
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: DarkRed;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: DarkBlue;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+---
+
+
+```{r,results='hide',message=FALSE,echo=FALSE,warning=FALSE,out.height='110%',out.width = '110%'}
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(imputeTS)
+
+seaH <- read.csv("C:/Users/mbradar/Documents/Sea_waves/sea_2019_2020_L_hourly.csv",sep=";")
+vert <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_vert.csv",sep=";")
+vertH <- read.csv("C:/Users/mbradar/Documents/Robin/data/Birds/Luchterduinen/allseasons_2019-2020_hourly_vert.csv",sep=";")
+clutH <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_2019-2020_horiz_hourly.csv",sep=";")
+clutV <- read.csv("C:/Users/mbradar/Documents/Robin/data/Clutter/Luchterduinen/clutter_2019-2020_vert_hourly.csv",sep=";")
+rainH <- read.csv("C:/Users/mbradar/Documents/Rain-Johannes/rain_2019-2020_L_hourly.csv", sep=";")
+```
+
+
+## Birds and clutter
+##### This is a timeseries of bird counts from vertical radar(upper plot) and clutter extracted from 
+##### horizontal radar (middle) and vertical radar (bottom)
+##### Use slider to zoom in and out 
+
+
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10, out.width='110%'}
+birds <- ggplot(vert, aes(timestamph)) +
+  geom_bar(mapping = aes(x = timestamph, y = ..count..,colour=vert$classification, fill=vert$classification), stat = "count",show.legend = T) +
+  scale_fill_manual(values = c("magenta","red","orange","yellow"), name="", drop=F)+
+  scale_colour_manual(values  = c("magenta","red","orange","yellow"), name="", drop=F)+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=10), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+  scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Counts")
+
+fig1 <- ggplotly(birds,dynamicTicks = T)
+fig2 <- plot_ly(clutH) 
+fig2 <- fig2 %>% add_lines(data=clutH, name="land_H", x = ~timestamph, y = ~l_mask*100,
+                        line = list(color="green",width=0.5),showlegend=TRUE)
+fig2 <- fig2 %>% add_lines(data=clutH, name="variable_H", x = ~timestamph, y = ~v_mask*100,
+                         line = list(color="brown",width=0.5),showlegend=TRUE)
+fig2 <- fig2 %>% add_lines(data=clutH, name="rain_H", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="blue",width=0.5),showlegend=TRUE)
+
+fig3 <- plot_ly(clutV) 
+fig3 <- fig3 %>% add_lines(data=clutV, name="land_V", x = ~timestamph, y = ~l_mask*100,
+                        line = list(color="forestgreen",width=0.5),showlegend=TRUE)
+fig3 <- fig3 %>% add_lines(data=clutV, name="variable_V", x = ~timestamph, y = ~v_mask*100,
+                         line = list(color="chocolate",width=0.5),showlegend=TRUE)
+fig3 <- fig3 %>% add_lines(data=clutV, name="rain_V", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+fig <-  subplot(fig1, fig2,fig3, nrows = 3, shareX = TRUE) 
+fig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),   yaxis2=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")), yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")), titleX = TRUE, titleY = TRUE) 
+```
+## Following graphs show comparison of clutter (land, rain and variant) between two radar beams
+
+## Land clutter comparison
+```{r,,message=FALSE,echo=FALSE,warning=FALSE,out.width='110%'}
+
+clut1 <- ggplot() +
+  geom_line(data=clutH, aes(timestamph,l_mask*100,colour="horizontal"))+
+  geom_line(data=clutV,aes(timestamph,l_mask*100,colour="vertical"))+
+  scale_colour_manual(name="Radar",values=c("green","forestgreen"))+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=9), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+ scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Clutter %")
+
+ggplotly(clut1, dynamicTicks = T) %>%
+  rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 1) %>%
+  layout(hovermode = "x")
+```
+
+
+
+## Rain clutter comparison
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width='110%'}
+clut2 <- ggplot(clutH, aes(timestamph,r_mask*10,colour="horizontal")) +
+  geom_line()+
+  geom_line(data=clutV,aes(timestamph,r_mask*10,colour="vertical"))+
+  scale_colour_manual(name="Radar",values=c("blue","darkslateblue"))+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=9), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+ scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Clutter %")
+
+ggplotly(clut2, dynamicTicks = T) %>%
+  rangeslider(borderwidth = 1) %>%
+  layout(hovermode = "x")
+```
+
+
+## Variant clutter comparison
+```{r,message=FALSE,echo=FALSE,warning=FALSE,out.width='110%'}
+
+clut3 <- ggplot(clutH, aes(timestamph,v_mask*100,colour="horizontal")) +
+  geom_line()+
+  geom_line(data=clutV,aes(timestamph,v_mask*100,colour="vertical"))+
+  scale_colour_manual(name="Radar",values=c("brown","chocolate"))+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=9), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+ scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Clutter (%)")
+ 
+
+ggplotly(clut3, dynamicTicks = T) %>%
+  rangeslider(borderwidth = 1) %>%
+  layout(hovermode = "x") 
+```
+
+
+## Rain clutter filter from both radars and rain data from KNMI
+
+#### note that the KNMI rain data doesn't come from the exact location of Luchterduninen, but from a point
+#### that is more than 10 km away and closer to the coast
+#### the graph below shows (top down): bird counts (vertical radar), rain data from KNMI, rain clutter 
+#### activity in the horizontal radar and rain clutter activity in the vertical radar
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width='110%'}
+rainy <- ggplot(rainH,aes(timestamph,mean,colour="mean")) +
+  geom_line() +
+  scale_colour_manual(values = c("royalblue4"), name=" ")+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=9), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+ scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2020-12-01 07:00:00")))+
+  scale_y_continuous(name = "Rain (mm)")
+rain1 <- ggplotly(rainy,dynamicTicks = TRUE)
+
+rain2 <- plot_ly(clutH) 
+rain2 <- rain2 %>% add_lines(data=clutH, name="rain_H", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="blue",width=0.5),showlegend=TRUE)
+rain3 <- plot_ly(clutV) 
+rain3 <- rain3 %>% add_lines(data=clutV, name="rain_V", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="darkslateblue",width=0.5),showlegend=TRUE)
+
+rainfig <-  subplot(fig1,rain1,rain2,rain3,nrows = 4, shareX = TRUE) 
+rainfig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+          yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis4=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+            titleX = TRUE, titleY = TRUE) 
+
+
+```
+
+
+## Variant clutter filter from both radars and rain data from KNMI
+
+#### same as the graph above, just with the variant filter from different radar beams 
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width='110%'}
+rain5 <- plot_ly(clutH) 
+rain5 <- rain5 %>% add_lines(data=clutH, name="variant_H", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="brown"),showlegend=TRUE)
+rain6 <- plot_ly(clutV) 
+rain6 <- rain6 %>% add_lines(data=clutV, name="variant_V", x = ~timestamph, y = ~r_mask*100,
+                         line = list(color="chocolate"),showlegend=TRUE)
+
+rainfig <-  subplot(fig1,rain1,rain5,rain6, nrows = 4, shareX = TRUE) 
+rainfig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),          
+          yaxis2=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis4=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+            titleX = TRUE, titleY = TRUE) 
+```
+
+
+## Sea wave data from waterinfo
+
+#### the sea wave data comes from a station close to Luchterduinen called IJgeul 1 boei
+#### data of the nearby stations is not consistent: some of them have data for only 2019 (which is the case
+#### with the one presented here), while some of them have data for only last three months of 2020
+
+#### the subplots shown below are in the following order (top down): bird counts (vertical radar), sea wave
+#### data, rain data from KNMI, rain clutter activity in the horizontal radar and rain clutter activity in
+#### the vertical radar
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width='110%'}
+seas <- ggplot(seaH,aes(timestamph,height,colour="height")) +
+  geom_line() +
+  scale_colour_manual(values = c("aquamarine4"), name=" ")+
+  theme_bw()+
+  theme(axis.title.y = element_text(size=12), legend.text=element_text(size=9), 
+        legend.title=element_text(size=12, face="bold"), legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.text.y=element_text(size=9), axis.text.x=element_text(angle=90), plot.margin = unit(c(0,0,0,0), "cm"),
+        axis.title.x = element_blank(), plot.title = element_text(size = 18, face = "bold"))+
+ scale_x_datetime(date_breaks="days", date_labels="%Y-%m-%d",
+                   limits=c(as.POSIXct("2019-02-15 17:00:00"), as.POSIXct("2019-12-01 07:00:00")))+
+  scale_y_continuous(name = "Sea waves (cm)")
+sea1 <- ggplotly(seas,dynamicTicks = TRUE)
+
+rainfig <-  subplot(fig1,sea1,rain1,rain2,rain3, nrows = 5, shareX = TRUE) 
+rainfig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),                yaxis2=list(title="Sea waves (cm)",range=c(0,100), tickfont = list(size=8),             titlefont=list(size=14,face="bold")), 
+          yaxis3=list(title="Rain (mm)",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis4=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis6=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis7=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+            titleX = TRUE, titleY = TRUE) 
+
+```
+
+
+## Sea wave data from waterinfo 
+
+#### same as the graph above, just with the variant clutter activity from both radar beams
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE,fig.height=10,out.width='110%'}
+rainfig <-  subplot(fig1,sea1,rain5,rain6, nrows = 4, shareX = TRUE) 
+rainfig %>% rangeslider(start=as.POSIXct("2019-02-15 17:00:00"),end=as.POSIXct("2019-06-01 17:00:00"), borderwidth = 0.2) %>%
+   layout(yaxis=list(title="Count", tickfont = list(size=8), titlefont=list(size=14,face="bold")),                yaxis2=list(title="Height (cm)",range=c(0,100), tickfont = list(size=8),             titlefont=list(size=14,face="bold")), 
+          yaxis3=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+          yaxis4=list(title="Percentage",range=c(0,100), tickfont = list(size=8), titlefont=list(size=14,face="bold")),
+            titleX = TRUE, titleY = TRUE, rangeslider = list(type = "date", thickness=0.1)) 
+```
+
